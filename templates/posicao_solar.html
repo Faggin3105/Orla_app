@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Posição Solar (Shadowmap Style)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #181818;
+        }
+        body, #app {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', Arial, sans-serif;
+            overflow: hidden;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        #overlay {
+            pointer-events: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
+            z-index: 10;
+        }
+        #ui-bar {
+            position: absolute;
+            top: 0; left: 0; width: 100vw;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 2vw; height: 7.5vh;
+            z-index: 100;
+            background: rgba(24,24,24,0.85);
+        }
+        .ui-big {
+            color: #FFF700;
+            font-size: 3.5vh;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 10px #0008;
+        }
+        .ui-mid {
+            color: #fff;
+            font-size: 2.7vh;
+            font-weight: bold;
+            margin-left: 2vw;
+        }
+        #btn-agora {
+            background: #FFD600;
+            color: #232323;
+            font-size: 2.7vh;
+            font-weight: 900;
+            border-radius: 2vh;
+            border: none;
+            padding: 1vh 4vw;
+            box-shadow: 0 2px 16px #0006;
+            margin-left: 2vw;
+        }
+        #slider-bar {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            top: 8vh; width: 92vw; z-index: 101;
+            display: flex; align-items: center; justify-content: center;
+            gap: 2vw;
+        }
+        #slider-hour {
+            width: 85vw;
+        }
+        #slider-label {
+            color: #fff; background: #222c;
+            font-size: 2vh; font-weight: bold;
+            border-radius: 1vh; padding: 0.5vh 1.3vw;
+        }
+        /* Botão voltar */
+        #btn-voltar {
+            background: #232323ee;
+            color: #fff700;
+            font-size: 2.2vh;
+            font-weight: bold;
+            border: none;
+            border-radius: 1.4vh;
+            padding: 0.5vh 2vw 0.5vh 1.6vw;
+            margin-right: 2vw;
+            margin-left: 0.5vw;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #0007;
+            transition: background .13s;
+        }
+        #btn-voltar:hover {
+            background: #FFD600;
+            color: #232323;
+        }
+        @media (max-width: 600px) {
+            #ui-bar, #slider-bar {
+                font-size: 2vh;
+                padding: 0 4vw;
+            }
+            .ui-big { font-size: 3vh; }
+            .ui-mid { font-size: 2vh; }
+            #btn-agora { font-size: 2vh; padding: 1vh 6vw;}
+            #btn-voltar { font-size: 2vh; padding: 0.5vh 5vw 0.5vh 4vw;}
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="ui-bar">
+        <button id="btn-voltar" onclick="window.location.href='/'">&larr; Voltar</button>
+        <div class="ui-big" id="hora"></div>
+        <div class="ui-mid" id="data"></div>
+        <button id="btn-agora">AGORA</button>
+    </div>
+    <div id="slider-bar">
+        <span id="slider-label"></span>
+        <input id="slider-hour" type="range" min="0" max="1439" value="0">
+    </div>
+    <div id="map"></div>
+    <svg id="overlay"></svg>
+</div>
+
+<!-- LEAFLET -->
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<!-- SunCalc for position of the sun -->
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<script>
+const overlay = document.getElementById('overlay');
+const horaDiv = document.getElementById('hora');
+const dataDiv = document.getElementById('data');
+const btnAgora = document.getElementById('btn-agora');
+const sliderHour = document.getElementById('slider-hour');
+const sliderLabel = document.getElementById('slider-label');
+
+// ================ INIT MAP ================
+const map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false,
+    minZoom: 12,
+    maxZoom: 19,
+    zoom: 17,
+    center: [-16.6869, -49.2648],
+    preferCanvas: true,
+    dragging: true,
+    tap: true,
+    scrollWheelZoom: true,
+    doubleClickZoom: true,
+    boxZoom: false,
+    keyboard: false,
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    opacity: 0.9,
+    attribution: '',
+}).addTo(map);
+
+// ======= MAIN STATE ===========
+let userLatLng = null;
+let now = new Date();
+let manualTime = false;
+
+// ============ GEOLOCATE =============
+function getLocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            alert("Seu navegador não suporta geolocalização.");
+            reject();
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                userLatLng = [pos.coords.latitude, pos.coords.longitude];
+                map.setView(userLatLng, 17, { animate: true });
+                resolve(userLatLng);
+            },
+            err => {
+                alert(
+                    "Erro ao obter localização:\n" +
+                    "Código: " + err.code + "\n" +
+                    "Mensagem: " + err.message + "\n\n" +
+                    "Dicas:\n- Permita acesso à localização no navegador.\n- Ative GPS/dispositivo de localização.\n- Se estiver em desktop, a precisão pode ser baixa."
+                );
+                userLatLng = [-16.6869, -49.2648];
+                map.setView(userLatLng, 17, { animate: true });
+                resolve(userLatLng);
+            }, { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+}
+// =========== SUN & CLOCK ============
+function pad2(n) { return (n < 10 ? '0':'')+n; }
+
+function formatHour(dt) { return pad2(dt.getHours()) + ':' + pad2(dt.getMinutes()); }
+
+function formatDate(dt) { 
+    return pad2(dt.getDate()) + '/' + pad2(dt.getMonth()+1) + '/' + dt.getFullYear();
+}
+
+// ========== DRAW OVERLAY ===========
+function drawOverlay() {
+    // 1. Get current size & center
+    const w = window.innerWidth, h = window.innerHeight;
+    overlay.setAttribute('width', w);
+    overlay.setAttribute('height', h);
+
+    // 2. Solar clock center/radius
+    const R = Math.min(w, h) * 0.41; // Main radius (40% viewport)
+    const cx = w/2, cy = h/2 + Math.max(0, (h-w)*0.14);
+
+    // 3. Sun calculations
+    const lat = userLatLng ? userLatLng[0] : -16.6869;
+    const lng = userLatLng ? userLatLng[1] : -49.2648;
+    const date = now;
+
+    // Sun times for today
+    const times = SunCalc.getTimes(date, lat, lng);
+    const sunrise = times.sunrise;
+    const sunset = times.sunset;
+    const solarNoon = times.solarNoon;
+
+    // Points for solar arcs (diurnal & nocturnal)
+    let dayArc = [], nightArc = [];
+    for (let i = 0; i < 1440; i += 5) {
+        const t = new Date(date);
+        t.setHours(0, i, 0, 0);
+        const pos = SunCalc.getPosition(t, lat, lng);
+        const elev = pos.altitude * 180/Math.PI;
+        const azim = (pos.azimuth * 180/Math.PI + 180) % 360;
+        if (elev >= 0) {
+            dayArc.push({ azim, elev, t: t });
+        } else {
+            nightArc.push({ azim, elev, t: t });
+        }
+    }
+
+    // Current sun pos
+    const sun = SunCalc.getPosition(date, lat, lng);
+    const sunAz = (sun.azimuth * 180/Math.PI + 180) % 360;
+    const sunEl = sun.altitude * 180/Math.PI;
+
+    // Helper to map azim/elev to clock XY
+    function polar(az, el, r=R) {
+        // Shadowmap style: 0=N, 90=E, 180=S, 270=W
+        // SVG: 0° at top, increases CW
+        const theta = ((az-90)*Math.PI/180); // -90 shift so 0=N
+        const rr = r * (0.65 + 0.32 * Math.max(0, Math.sin(el*Math.PI/180)));
+        return [cx + rr*Math.cos(theta), cy + rr*Math.sin(theta)];
+    }
+
+    // 4. Clear overlay
+    overlay.innerHTML = '';
+
+    // 5. Draw night arc (dashed)
+    let arcNight = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    arcNight.setAttribute('points', nightArc.map(p => polar(p.azim, -2, R).join(',')).join(' '));
+    arcNight.setAttribute('stroke', '#80B2FD');
+    arcNight.setAttribute('stroke-width', 5);
+    arcNight.setAttribute('fill', 'none');
+    arcNight.setAttribute('stroke-dasharray', '16,16');
+    arcNight.setAttribute('opacity', '0.8');
+    overlay.appendChild(arcNight);
+
+    // 6. Draw day arc (solid, yellow)
+    let arcDay = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    arcDay.setAttribute('points', dayArc.map(p => polar(p.azim, 2, R).join(',')).join(' '));
+    arcDay.setAttribute('stroke', '#FFE05C');
+    arcDay.setAttribute('stroke-width', 6);
+    arcDay.setAttribute('fill', 'none');
+    arcDay.setAttribute('opacity', '0.97');
+    overlay.appendChild(arcDay);
+
+    // 7. Draw clock circle + ticks
+    let circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', R);
+    circle.setAttribute('stroke', 'white');
+    circle.setAttribute('stroke-width', 2.8);
+    circle.setAttribute('fill', 'rgba(24,24,24,0.55)');
+    circle.setAttribute('opacity', '0.89');
+    overlay.appendChild(circle);
+
+    // Ticks & cardinals
+    for (let a = 0; a < 360; a += 30) {
+        const [tx, ty] = polar(a, 0, R+12);
+        let label = '';
+        if (a === 0) label = 'N';
+        else if (a === 90) label = 'L';
+        else if (a === 180) label = 'S';
+        else if (a === 270) label = 'O';
+        else label = a.toString();
+        let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t.setAttribute('x', tx); t.setAttribute('y', ty+9);
+        t.setAttribute('font-size', '2.9vh');
+        t.setAttribute('font-family', 'Arial,Inter,sans-serif');
+        t.setAttribute('font-weight', 'bold');
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('fill', 'white');
+        t.setAttribute('opacity', a%90===0?1:0.8);
+        t.textContent = label;
+        overlay.appendChild(t);
+    }
+
+    // 8. Draw center (your location)
+    let user = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    user.setAttribute('cx', cx); user.setAttribute('cy', cy); user.setAttribute('r', R*0.048);
+    user.setAttribute('fill', '#2EA2FF'); user.setAttribute('stroke', '#fff');
+    user.setAttribute('stroke-width', 3.5);
+    user.setAttribute('opacity', '1');
+    overlay.appendChild(user);
+
+    // 9. Draw sunrise/sunset points
+    // Find closest point in dayArc to sunrise/sunset
+    function nearestArcTime(arc, dt) {
+        return arc.reduce((acc, pt) => Math.abs(pt.t - dt) < Math.abs(acc.t - dt) ? pt : acc, arc[0]);
+    }
+    let sunRisePt = nearestArcTime(dayArc, sunrise);
+    let sunSetPt = nearestArcTime(dayArc, sunset);
+
+    // SUNRISE (green)
+    const [xr, yr] = polar(sunRisePt.azim, sunRisePt.elev, R);
+    let riseC = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    riseC.setAttribute('cx', xr); riseC.setAttribute('cy', yr); riseC.setAttribute('r', R*0.09);
+    riseC.setAttribute('fill', '#0EC948'); riseC.setAttribute('stroke', '#fff');
+    riseC.setAttribute('stroke-width', 6);
+    overlay.appendChild(riseC);
+
+    let riseT = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    riseT.setAttribute('x', xr); riseT.setAttribute('y', yr+11);
+    riseT.setAttribute('font-size', '2.5vh'); riseT.setAttribute('font-family', 'Inter'); 
+    riseT.setAttribute('font-weight', 'bold');
+    riseT.setAttribute('text-anchor', 'middle'); riseT.setAttribute('fill', 'white');
+    riseT.textContent = formatHour(sunrise);
+    overlay.appendChild(riseT);
+
+    // SUNSET (orange)
+    const [xs, ys] = polar(sunSetPt.azim, sunSetPt.elev, R);
+    let setC = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    setC.setAttribute('cx', xs); setC.setAttribute('cy', ys); setC.setAttribute('r', R*0.09);
+    setC.setAttribute('fill', '#FFA93B'); setC.setAttribute('stroke', '#fff');
+    setC.setAttribute('stroke-width', 6);
+    overlay.appendChild(setC);
+
+    let setT = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    setT.setAttribute('x', xs); setT.setAttribute('y', ys+11);
+    setT.setAttribute('font-size', '2.5vh'); setT.setAttribute('font-family', 'Inter'); 
+    setT.setAttribute('font-weight', 'bold');
+    setT.setAttribute('text-anchor', 'middle'); setT.setAttribute('fill', 'white');
+    setT.textContent = formatHour(sunset);
+    overlay.appendChild(setT);
+
+    // 10. Draw current sun position & hand (sol sempre no arco certo!)
+    let sunPt;
+    if (sunEl >= 0) { // dia
+        sunPt = nearestArcTime(dayArc, date);
+    } else { // noite
+        sunPt = nearestArcTime(nightArc, date);
+    }
+    const [xsun, ysun] = polar(sunPt.azim, sunPt.elev, R);
+
+    // Sun hand (azimute)
+    let sunHand = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    sunHand.setAttribute('x1', cx); sunHand.setAttribute('y1', cy);
+    sunHand.setAttribute('x2', xsun); sunHand.setAttribute('y2', ysun);
+    sunHand.setAttribute('stroke', '#ffe169');
+    sunHand.setAttribute('stroke-width', 6.5);
+    sunHand.setAttribute('stroke-linecap', 'round');
+    sunHand.setAttribute('opacity', '0.85');
+    sunHand.setAttribute('stroke-dasharray', sunEl < 0 ? "12,12" : "none");
+    overlay.appendChild(sunHand);
+
+    // Sun icon (bigger at sunset/sunrise)
+    let sunC = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    sunC.setAttribute('cx', xsun); sunC.setAttribute('cy', ysun); sunC.setAttribute('r', R*0.11);
+    sunC.setAttribute('fill', sunEl>=0 ? "#FFF700" : "#FFE2AC");
+    sunC.setAttribute('stroke', '#fff');
+    sunC.setAttribute('stroke-width', 7.2);
+    overlay.appendChild(sunC);
+
+    let sunT = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    sunT.setAttribute('x', xsun); sunT.setAttribute('y', ysun+14);
+    sunT.setAttribute('font-size', '2.4vh'); sunT.setAttribute('font-family', 'Inter'); 
+    sunT.setAttribute('font-weight', 'bold');
+    sunT.setAttribute('text-anchor', 'middle'); sunT.setAttribute('fill', '#232323');
+    sunT.textContent = formatHour(date);
+    overlay.appendChild(sunT);
+
+    // Azimuth label
+    let azT = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    azT.setAttribute('x', cx); azT.setAttribute('y', cy);
+    azT.setAttribute('font-size', '3vh'); azT.setAttribute('font-family', 'Inter'); 
+    azT.setAttribute('font-weight', '900');
+    azT.setAttribute('text-anchor', 'middle'); azT.setAttribute('fill', 'white');
+    azT.setAttribute('opacity', 0.91);
+    azT.textContent = `${sunPt.azim.toFixed(1)}°`;
+    overlay.appendChild(azT);
+}
+
+// ========== UPDATE UI ==========
+function updateAll() {
+    // UI
+    horaDiv.textContent = formatHour(now);
+    dataDiv.textContent = formatDate(now);
+
+    let min = now.getHours()*60 + now.getMinutes();
+    sliderHour.value = min;
+    sliderLabel.textContent = formatHour(now);
+
+    drawOverlay();
+}
+
+// ========== EVENT HANDLERS ===========
+btnAgora.onclick = async () => {
+    manualTime = false;
+    now = new Date();
+    await getLocation();
+    updateAll();
+};
+sliderHour.oninput = (e) => {
+    manualTime = true;
+    let m = +sliderHour.value;
+    now.setHours(Math.floor(m/60));
+    now.setMinutes(m%60);
+    updateAll();
+};
+window.onresize = () => { setTimeout(drawOverlay, 60); };
+
+// ========= ON LOAD ==========
+(async function(){
+    await getLocation();
+    now = new Date();
+    updateAll();
+    setInterval(() => {
+        if (!manualTime) {
+            now = new Date();
+            updateAll();
+        }
+    }, 10000);
+    map.on('move', drawOverlay); // Recenter overlay on map pan
+})();
+</script>
+</body>
+</html>
+
+
+

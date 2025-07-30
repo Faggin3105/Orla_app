@@ -2,78 +2,51 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Avaliação de Imóveis da Orla</title>
+    <title>Avaliação de Imóveis por I.A</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        body {
-            background-color: black;
-            color: #D26900;
-            display: flex;
-        }
-        label, h1, h2, .form-label, .form-select, .form-range, nav a {
-            color: #ffffff;
-        }
-        .form-control, .form-select {
-            background-color: #000;
-            color: #ffffff;
-            border-color: #D26900;
-        }
-        .btn-primary {
-            background-color: #D26900;
-            border: none;
-        }
-        .btn-primary:hover {
-            background-color: #a04c00;
-        }
-        .sidebar {
-            width: 250px;
-            background-color: #111;
-            padding: 20px;
-            height: 100vh;
-        }
-        .sidebar a {
-            display: block;
-            color: #ffffff;
-            text-decoration: none;
-            margin: 10px 0;
-        }
-        .main-content {
-            flex-grow: 1;
-            padding: 40px;
-        }
+        body { background-color: black; color: #D26900; display: flex; }
+        label, h1, h2, .form-label, .form-select, .form-range, nav a { color: #ffffff; }
+        .form-control, .form-select { background-color: #000; color: #ffffff; border-color: #D26900; }
+        .btn-primary { background-color: #D26900; border: none; }
+        .btn-primary:hover { background-color: #a04c00; }
+        .sidebar { width: 250px; background-color: #111; padding: 20px; height: 100vh; }
+        .sidebar a { display: block; color: #fff; text-decoration: none; margin: 10px 0; }
+        .main-content { flex-grow: 1; padding: 40px; }
+        .valor-cards { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; margin-bottom: 32px; }
+        .valor-card { background: #181818; border-radius: 1.5rem; padding: 32px 24px 24px 24px; box-shadow: 0 2px 12px #0008; text-align: center; min-width: 280px; max-width: 350px; flex: 1 1 280px; }
+        .valor-card h5 { font-size: 1rem; color: #bbb; }
+        .valor-card.valor-oportunidade { border: 2px solid #26d26e; }
+        .valor-card.valor-avaliacao { border: 2px solid #1e9be6; }
+        .valor-card.valor-paciente { border: 2px solid #FFD700; }
+        .valor-principal { font-size: 1.8rem; font-weight: bold; }
+        .valor-oportunidade .valor-principal { color: #26d26e; }
+        .valor-avaliacao .valor-principal { color: #1e9be6; }
+        .valor-paciente .valor-principal { color: #FFD700; }
+        #bairro { background: #000 !important; color: #fff !important; border-color: #D26900 !important; }
+        #bairro::placeholder { color: #bbb !important; opacity: 1; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <img src="{{ url_for('static', filename='LOGO TRIPLE A BRANCA_Prancheta 1.png') }}" alt="Logo Orla" class="img-fluid mb-4" style="max-width: 50%;">
-        <a href="/noticias">Notícias do Mercado</a>
-        <a href="/indices">Consulta de Índices</a>
-        <a href="/simulador">Simulador de Financiamento</a>
-        <a href="/calculadora">Calculadora Financeira</a>
-        <a href="/">Avaliação de Imóveis</a>
-        <a href="/contratos">Criação de Contratos</a>
-        <a href="/posicao-solar">Posição Solar</a>
-        <a href="/perfil-cliente">Análise de Perfil de Cliente</a>
-        <a href="/dicionario">Dicionário do Corretor</a>
-        <a href="/biblioteca">Biblioteca</a>
-        <a href="/universidade">Universidade</a>
-        <a href="/agenda">Agenda</a>
-    </div>
+ {% include "sidebar.html" %}
     <div class="main-content">
-        <h1 class="text-center mb-4">Avaliação de Imóveis da Orla</h1>
-        <form method="POST" class="row g-3 text-start">
-            <div class="col-md-4">
+        <h1 class="text-center mb-4">Avaliação de Imóveis por I.A</h1>
+        <form method="POST" class="row gy-2 gx-3 align-items-end" style="margin-top:30px;">
+            <div class="col-md-3">
                 <label for="estado" class="form-label">Estado</label>
                 <select name="estado" id="estado" class="form-select" onchange="this.form.submit()">
+                    <option value="" {% if not estado %}selected{% endif %}></option>
                     {% for e in estados %}
                         <option value="{{ e }}" {% if e == estado %}selected{% endif %}>{{ e }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <label for="cidade" class="form-label">Cidade</label>
                 <select name="cidade" id="cidade" class="form-select" onchange="this.form.submit()">
+                    <option value="" {% if not cidade %}selected{% endif %}></option>
                     {% for c in cidades %}
                         <option value="{{ c }}" {% if c == cidade %}selected{% endif %}>{{ c }}</option>
                     {% endfor %}
@@ -81,63 +54,232 @@
             </div>
             <div class="col-md-4">
                 <label for="bairro" class="form-label">Bairro</label>
-                <select name="bairro" class="form-select">
+                <input
+                    list="bairros-list"
+                    name="bairro"
+                    id="bairro"
+                    class="form-control"
+                    value="{{ request.form.get('bairro', '') }}"
+                    autocomplete="off"
+                    placeholder="Digite para buscar bairro..."
+                >
+                <datalist id="bairros-list">
                     {% for b in bairros %}
-                        <option value="{{ b }}" {% if b == bairro %}selected{% endif %}>{{ b }}</option>
+                        <option value="{{ b }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div class="col-md-2">
+                <label for="tipo" class="form-label">Tipo</label>
+                <select name="tipo" id="tipo" class="form-select">
+                    <option value="" {% if not tipo %}selected{% endif %}></option>
+                    {% for t in tipos %}
+                        <option value="{{ t }}" {% if t == tipo %}selected{% endif %}>{{ t }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
-                <label for="tipo" class="form-label">Tipo do Imóvel</label>
-                <select name="tipo" class="form-select">
-                    {% for tipo in tipos %}
-                        <option value="{{ tipo }}">{{ tipo }}</option>
+            <div class="col-md-2">
+                <label for="mobilia" class="form-label">Mobília</label>
+                <select name="mobilia" id="mobilia" class="form-select">
+                    <option value="" {% if not mobilia %}selected{% endif %}></option>
+                    {% for m in mobilias %}
+                        <option value="{{ m }}" {% if m == mobilia %}selected{% endif %}>{{ m }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
-                <label for="mobilia" class="form-label">Mobilia</label>
-                <select name="mobilia" class="form-select">
-                    {% for mob in mobilias %}
-                        <option value="{{ mob }}">{{ mob }}</option>
-                    {% endfor %}
-                </select>
+            <div class="col-md-2">
+                <label for="m2" class="form-label">Área (m²)</label>
+                <input type="number" class="form-control" name="m2" id="m2" step="1" min="0" value="{{ request.form.get('m2', '') }}">
             </div>
-            <div class="col-md-4">
-                <label for="m2" class="form-label">Área (m²): <span id="m2_val">100</span></label>
-                <input type="range" class="form-range" min="10" max="2000" step="10" name="m2" value="100" oninput="m2_val.innerText = this.value">
+            <div class="col-md-1">
+                <label for="quartos" class="form-label">Quartos</label>
+                <input type="number" class="form-control" name="quartos" id="quartos" min="0" value="{{ request.form.get('quartos', '') }}">
             </div>
-            <div class="col-md-3">
-                <label for="quartos" class="form-label">Quartos: <span id="quartos_val">2</span></label>
-                <input type="range" class="form-range" min="0" max="10" name="quartos" value="2" oninput="quartos_val.innerText = this.value">
+            <div class="col-md-1">
+                <label for="banheiros" class="form-label">Banheiros</label>
+                <input type="number" class="form-control" name="banheiros" id="banheiros" min="0" value="{{ request.form.get('banheiros', '') }}">
             </div>
-            <div class="col-md-3">
-                <label for="banheiros" class="form-label">Banheiros: <span id="banheiros_val">1</span></label>
-                <input type="range" class="form-range" min="0" max="10" name="banheiros" value="1" oninput="banheiros_val.innerText = this.value">
+            <div class="col-md-1">
+                <label for="garagem" class="form-label">Garagem</label>
+                <input type="number" class="form-control" name="garagem" id="garagem" min="0" value="{{ request.form.get('garagem', '') }}">
             </div>
-            <div class="col-md-3">
-                <label for="garagem" class="form-label">Garagem: <span id="garagem_val">1</span></label>
-                <input type="range" class="form-range" min="0" max="10" name="garagem" value="1" oninput="garagem_val.innerText = this.value">
+            <div class="col-md-2">
+                <label for="ano" class="form-label">Ano de Construção</label>
+                <input type="number" class="form-control" name="ano" id="ano" min="1900" max="2100" value="{{ request.form.get('ano', '') }}">
             </div>
-            <div class="col-md-3">
-                <label for="ano" class="form-label">Ano: <span id="ano_val">2020</span></label>
-                <input type="range" class="form-range" min="1900" max="2025" step="1" name="ano" value="2020" oninput="ano_val.innerText = this.value">
-            </div>
-            <div class="col-12 text-center mt-3">
-                <button type="submit" name="avaliar" value="1" class="btn btn-primary">Avaliar Imóvel</button>
+            <div class="col-12 text-center">
+                <button type="submit" name="avaliar" value="1" class="btn btn-primary px-5" style="background:#D26900; border:none;">Avaliar Imóvel</button>
             </div>
         </form>
-
-        {% if valor_estimado %}
-        <div class="alert alert-success mt-4" style="background-color:#222; border-color:#D26900; color:#D26900;">
-            💰 Valor estimado: <strong>R$ {{ "{:,.2f}".format(valor_estimado) }}</strong><br>
-            📐 Valor por m²: <strong>R$ {{ "{:,.2f}".format(valor_m2) }}</strong>
+        {% if dados_busca %}
+        <div class="card mt-4 mb-3 shadow" style="background:#181818; border:none; max-width:900px; margin:auto;">
+            <div class="card-header text-center" style="background:#181818; color:#D26900; border:none; font-size: 1rem;">
+                <strong>Parâmetros da Busca</strong>
+            </div>
+            <div class="card-body py-2 d-flex flex-wrap justify-content-center align-items-center" style="gap:16px;">
+                {% for label, valor in dados_busca.items() %}
+                    <div style="min-width:90px; font-size:0.92rem; color:#fff;">
+                        <span style="color:#aaa;">{{ label }}:</span> <span style="font-weight:500;">{{ valor }}</span>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
-        <div class="text-center">
-            <img src="{{ url_for('static', filename=grafico_path) }}" class="img-fluid mt-3" alt="Gráfico">
+        {% endif %}
+        {% if mensagem_erro %}
+        <div class="alert alert-danger mt-4" role="alert" style="font-size:1.2rem;">
+            {{ mensagem_erro }}
+        </div>
+        {% endif %}
+        {% if valor_rapido %}
+        <div class="valor-cards mb-5">
+            <div class="valor-card valor-oportunidade">
+                <h5>Oportunidade</h5>
+                <div class="valor-principal">
+                    R$ {{ "{:,.2f}".format(valor_rapido).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                </div>
+                <div style="font-size:1.04rem; color:#26d26e; font-weight:500;">
+                    R$ {{ "{:,.2f}".format(valor_rapido_m2).replace(",", "X").replace(".", ",").replace("X", ".") }} <span style="color:#aaa;">/m²</span>
+                </div>
+                <div class="mt-2 text-white" style="font-size:0.99rem;">Tempo médio de venda: 3 meses</div>
+            </div>
+            <div class="valor-card valor-avaliacao">
+                <h5>Valor de Avaliação</h5>
+                <div class="valor-principal">
+                    R$ {{ "{:,.2f}".format(valor_ate_6m).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                </div>
+                <div style="font-size:1.04rem; color:#1e9be6; font-weight:500;">
+                    R$ {{ "{:,.2f}".format(valor_ate_6m_m2).replace(",", "X").replace(".", ",").replace("X", ".") }} <span style="color:#aaa;">/m²</span>
+                </div>
+                <div class="mt-2 text-white" style="font-size:0.99rem;">Valor por inferência estatística com I.A</div>
+            </div>
+            <div class="valor-card valor-paciente">
+                <h5>Venda Paciente</h5>
+                <div class="valor-principal">
+                    R$ {{ "{:,.2f}".format(valor_apos_12m).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                </div>
+                <div style="font-size:1.04rem; color:#FFD700; font-weight:500;">
+                    R$ {{ "{:,.2f}".format(valor_apos_12m_m2).replace(",", "X").replace(".", ",").replace("X", ".") }} <span style="color:#aaa;">/m²</span>
+                </div>
+                <div class="mt-2 text-white" style="font-size:0.99rem;">Tempo médio de venda: 12 meses</div>
+            </div>
+        </div>
+        {% endif %}
+        {% if lista_referencias and lista_referencias|length > 1 %}
+        <div class="card mt-4 mb-3 shadow" style="background:#181818; border:none; max-width:900px; margin:auto;">
+            <div class="card-header text-center" style="background:#181818; color:#D26900; border:none;">
+                <strong>Dispersão dos Comparáveis: Valor x m²</strong>
+            </div>
+            <div class="card-body py-4">
+                <canvas id="scatterChart" width="100%" height="60"></canvas>
+            </div>
+        </div>
+        <script>
+            const referencias = [
+                {% for item in lista_referencias %}
+                {
+                    x: {{ item.m2|float }},
+                    y: {{ item.valor_m2|float }},
+                    label: "{{ item.bairro|e }}",
+                    valor: {{ item.valor|float }},
+                    comparavel: true
+                },
+                {% endfor %}
+            ];
+            {% if dados_busca and valor_ate_6m_m2 and request.form.get('m2') %}
+            referencias.push({
+                x: {{ request.form.get('m2')|float }},
+                y: {{ valor_ate_6m_m2|float }},
+                label: "Sua Busca",
+                valor: {{ valor_ate_6m|float }},
+                comparavel: false
+            });
+            {% endif %}
+            const scatterData = {
+                datasets: [
+                    {
+                        label: 'Comparáveis',
+                        data: referencias.filter(pt => pt.comparavel),
+                        backgroundColor: '#1e9be6',
+                        borderColor: '#1e9be6',
+                        pointRadius: 8,
+                        pointHoverRadius: 12,
+                    },
+                    {% if dados_busca and valor_ate_6m_m2 and request.form.get('m2') %}
+                    {
+                        label: 'Sua Busca',
+                        data: [referencias[referencias.length - 1]],
+                        backgroundColor: '#FFA500',
+                        borderColor: '#FFA500',
+                        pointRadius: 12,
+                        pointHoverRadius: 17,
+                    },
+                    {% endif %}
+                ]
+            };
+            const scatterConfig = {
+                type: 'scatter',
+                data: scatterData,
+                options: {
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const v = ctx.raw;
+                                    if (!v.comparavel) {
+                                        return `🔶 Sua Busca: ${v.x} m² | R$ ${v.y.toLocaleString('pt-BR', {minimumFractionDigits:2})}/m² | Valor: R$ ${v.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+                                    }
+                                    return `m²: ${v.x} | R$ ${v.y.toLocaleString('pt-BR', {minimumFractionDigits:2})}/m² | Valor: R$ ${v.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+                                }
+                            }
+                        },
+                        legend: { display: true }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Área (m²)', color:'#fff' }, grid: { color: '#444' }, ticks: { color:'#fff' }},
+                        y: { title: { display: true, text: 'Valor por m² (R$)', color:'#fff' }, grid: { color: '#444' }, ticks: { color:'#fff' }}
+                    }
+                }
+            };
+            setTimeout(() => {
+                new Chart(document.getElementById('scatterChart'), scatterConfig);
+            }, 100);
+        </script>
+        {% endif %}
+        {% if lista_referencias and lista_referencias|length > 0 %}
+        <div class="card mt-4">
+            <div class="card-header" style="background:#111; color:#D26900; text-align:center;">
+                IMÓVEIS PARA COMPARAÇÃO
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-bordered; text-align:center">
+                        <thead>
+                            <tr class="text-align:center">
+                                <th>Bairro</th>
+                                <th>Tipo</th>
+                                <th>m²</th>
+                                <th>Quartos</th>
+                                <th>Valor (R$)</th>
+                                <th>Valor m² (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in lista_referencias %}
+                            <tr class="text-align:center">
+                                <td>{{ item.bairro }}</td>
+                                <td>{{ item.tipo }}</td>
+                                <td>{{ item.m2 }}</td>
+                                <td>{{ item.quartos }}</td>
+                                <td>{{ "{:,.2f}".format(item.valor).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                                <td>{{ "{:,.2f}".format(item.valor_m2).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         {% endif %}
     </div>
 </body>
 </html>
-

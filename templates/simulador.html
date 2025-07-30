@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Financiamento Imobiliário</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background: #000;
+            color: #FFD600;
+            margin: 0;
+            font-family: 'Inter', Arial, sans-serif;
+            display: flex;
+        }
+        .sidebar {
+            width: 240px;
+            background: #111;
+            padding: 24px 18px;
+            min-height: 100vh;
+        }
+        .sidebar img {
+            max-width: 80%;
+            display: block;
+            margin: 0 auto 32px auto;
+        }
+        .sidebar a {
+            display: block;
+            color: #fff;
+            text-decoration: none;
+            margin: 12px 0;
+            font-size: 1.06rem;
+            transition: color 0.18s;
+        }
+        .sidebar a.active, .sidebar a:hover {
+            color: #ca5d09;
+            font-weight: 600;
+        }
+        .main-content {
+            flex: 1;
+            padding: 48px 5vw 32px 5vw;
+        }
+        h1 {
+            color: #ca5d09;
+            font-size: 2.2rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            margin-bottom: 38px;
+        }
+        form {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 28px 18px;
+            margin-bottom: 26px;
+        }
+        .form-group {
+            flex: 1 1 250px;
+            min-width: 210px;
+        }
+        label {
+            color: #ca5d09;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .input-prefix {
+            position: absolute;
+            left: 13px;
+            color: #ca5d09;
+            font-size: 1.09rem;
+            font-weight: bold;
+            z-index: 3;
+            pointer-events: none;
+        }
+        input[type="text"], input[type="number"], input[type="date"], select {
+            background: #181818;
+            color: #fff;
+            border: 2px solid #ca5d09;
+            border-radius: 0.8rem;
+            font-size: 1.18rem;
+            width: 100%;
+            padding: 12px 12px 12px 44px;
+            margin-top: 2px;
+            margin-bottom: 1px;
+            box-shadow: none;
+            transition: border 0.18s;
+        }
+        input:focus, select:focus {
+            border: 2px solid #ca5d09;
+            outline: none;
+        }
+        select {
+            padding-left: 16px;
+        }
+        .button-main {
+            width: 100%;
+            padding: 15px 0;
+            background: #ca5d09;
+            color: #232323;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border: none;
+            border-radius: 0.8rem;
+            margin-top: 8px;
+            box-shadow: 0 2px 14px #FFD60033;
+            transition: background 0.14s, color 0.14s;
+        }
+        .button-main:hover {
+            background: #ca5d09;
+            color: #181818;
+        }
+        @media (max-width: 900px) {
+            .sidebar { min-width: 48px; max-width: 120px; padding: 9px 3px;}
+            .main-content { padding: 22px 2vw;}
+            .form-row { flex-direction: column; gap: 0; }
+            .form-group { min-width: 100%; }
+        }
+        #resultado {
+            margin: 44px auto 0 auto;
+            color: #ca5d09;
+            font-size: 1.1rem;
+            max-width: 980px;
+        }
+        table {
+            width: 100%;
+            color: #fff;
+            font-size: 1rem;
+            border-spacing: 0 2px;
+        }
+        th {
+            color: #ca5d09;
+        }
+    </style>
+</head>
+<body>
+{% include "sidebar.html" %}
+    <div class="main-content">
+        <h1>Simulador de Financiamento Imobiliário</h1>
+        <form id="form-simulador" autocomplete="off">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="valor_imovel">Valor do Imóvel</label>
+                    <div class="input-group">
+                        <span class="input-prefix">R$</span>
+                        <input type="text" id="valor_imovel" name="valor_imovel" required placeholder=" ">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="percent_entrada">% de Entrada</label>
+                    <div class="input-group">
+                        <input type="number" id="percent_entrada" class="form-control" placeholder="Valor da Entrada" oninput="calcularValorFinanciado()" step="0.01" min="0">
+
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="valor_entrada">Valor de Entrada</label>
+                    <div class="input-group">
+                        <span class="input-prefix">R$</span>
+                        <input type="text" id="valor_entrada" name="valor_entrada" required placeholder=" ">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="prazo">Prazo (meses)</label>
+                    <div class="input-group">
+                        <input type="number" id="prazo" name="prazo" required placeholder=" ">
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="taxa_juros">Taxa de Juros (% a.a.)</label>
+                    <div class="input-group">
+                        <input type="number" id="taxa_juros" name="taxa_juros" required placeholder=" " step="0.01">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="vencimento">Data 1ª Parcela</label>
+                    <div class="input-group">
+                        <input type="date" id="vencimento" name="vencimento" required placeholder=" ">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="sistema">Sistema</label>
+                    <div class="input-group">
+                        <select id="sistema" name="sistema" required>
+                            <option value="SAC">SAC (amortização constante)</option>
+                            <option value="PRICE">PRICE (parcela fixa)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="display:flex;align-items:end;">
+                    <button type="submit" class="button-main">Calcular</button>
+                </div>
+            </div>
+        </form>
+        <div id="resultado"></div>
+    </div>
+    <script>
+    // ========== MÁSCARA DE MOEDA =============
+    function formatRealInput(element) {
+        element.addEventListener('input', function(e) {
+            let v = this.value.replace(/\D/g, '');
+            v = (v/100).toFixed(2) + '';
+            v = v.replace('.', ',');
+            v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            this.value = v;
+        });
+    }
+    formatRealInput(document.getElementById('valor_imovel'));
+    formatRealInput(document.getElementById('valor_entrada'));
+
+    function formatReal(valor) {
+        return valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+    function parseReal(str) {
+        return Number(str.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    // Sincroniza campos de entrada
+    const valorImovel = document.getElementById('valor_imovel');
+    const valorEntrada = document.getElementById('valor_entrada');
+    const percentEntrada = document.getElementById('percent_entrada');
+    valorImovel.addEventListener('input', atualizarCamposEntrada);
+    percentEntrada.addEventListener('input', atualizarCamposEntrada);
+    valorEntrada.addEventListener('input', e => {
+        let v = e.target.value.replace(/[^\d,]/g, '').replace(/^0+/, '');
+        if (v) {
+            let n = parseInt(v.replace(/\D/g, ''));
+            e.target.value = formatReal(n / 100);
+        } else {
+            e.target.value = '';
+        }
+        // Atualiza o percentual automaticamente
+        if (valorImovel.value && valorEntrada.value) {
+            let vi = parseReal(valorImovel.value);
+            let ve = parseReal(valorEntrada.value);
+            if (vi > 0) {
+                percentEntrada.value = ((ve/vi)*100).toFixed(2);
+            }
+        }
+    });
+    function atualizarCamposEntrada() {
+        let vi = parseReal(valorImovel.value);
+        let pe = Number(percentEntrada.value.replace(',','.'));
+        if (!isNaN(pe) && pe > 0 && vi > 0) {
+            let ve = vi * (pe/100);
+            valorEntrada.value = formatReal(ve);
+        }
+    }
+    // Cálculo
+    document.getElementById('form-simulador').onsubmit = function(e) {
+        e.preventDefault();
+        const vi = parseReal(valorImovel.value);
+        const ve = parseReal(valorEntrada.value);
+        const valorFinanciado = vi - ve;
+        const prazo = Number(document.getElementById('prazo').value);
+        const taxaAno = Number(document.getElementById('taxa_juros').value) / 100;
+        const venc = document.getElementById('vencimento').value;
+        const sistema = document.getElementById('sistema').value;
+        // Taxa mensal
+        const taxaMes = Math.pow(1 + taxaAno, 1/12) - 1;
+        let html = `<div style="color:#FFD600;font-weight:bold;">Valor financiado: R$ ${formatReal(valorFinanciado)}</div>`;
+        html += `<div style="margin-bottom:16px;">Entrada: R$ ${formatReal(ve)} (${((ve/vi)*100).toFixed(2)}%)</div>`;
+        if (sistema === 'PRICE') {
+            const pmt = valorFinanciado * (taxaMes * Math.pow(1 + taxaMes, prazo)) / (Math.pow(1 + taxaMes, prazo) - 1);
+            html += `<div style="margin-bottom:8px;">Parcela fixa: <b style="color:#FFD600">R$ ${formatReal(pmt)}</b></div>`;
+            let saldo = valorFinanciado;
+            let dt = new Date(venc);
+            html += '<table><tr><th>#</th><th>Vencimento</th><th>Principal</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr>';
+            for (let i=1;i<=prazo;i++) {
+                let juros = saldo * taxaMes;
+                let amort = pmt - juros;
+                saldo -= amort;
+                let vencData = new Date(dt.getTime());
+                vencData.setMonth(dt.getMonth() + i - 1);
+                html += `<tr><td>${i}</td><td>${vencData.toLocaleDateString('pt-BR')}</td><td>${formatReal(amort)}</td><td>${formatReal(juros)}</td><td>${formatReal(pmt)}</td><td>${formatReal(Math.max(0, saldo))}</td></tr>`;
+            }
+            html += '</table>';
+        } else {
+            // SAC
+            const amort = valorFinanciado / prazo;
+            let saldo = valorFinanciado;
+            let dt = new Date(venc);
+            html += `<div style="margin-bottom:8px;">Primeira parcela: <b style="color:#FFD600">R$ ${formatReal(saldo * taxaMes + amort)}</b> (cai mês a mês)</div>`;
+            html += '<table><tr><th>#</th><th>Vencimento</th><th>Principal</th><th>Juros</th><th>Parcela</th><th>Saldo</th></tr>';
+            for (let i=1;i<=prazo;i++) {
+                let juros = saldo * taxaMes;
+                let parcela = amort + juros;
+                let vencData = new Date(dt.getTime());
+                vencData.setMonth(dt.getMonth() + i - 1);
+                html += `<tr><td>${i}</td><td>${vencData.toLocaleDateString('pt-BR')}</td><td>${formatReal(amort)}</td><td>${formatReal(juros)}</td><td>${formatReal(parcela)}</td><td>${formatReal(Math.max(0, saldo-amort))}</td></tr>`;
+                saldo -= amort;
+            }
+            html += '</table>';
+        }
+        document.getElementById('resultado').innerHTML = html;
+    }
+    </script>
+</body>
+</html>
+
+

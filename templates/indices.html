@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta de Índices</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body { background: #000; color: #D26900; display: flex; }
+        .sidebar { width: 250px; background-color: #111; padding: 20px; height: 100vh; }
+        .sidebar a { display: block; color: #fff; text-decoration: none; margin: 10px 0; }
+        .main-content { flex-grow: 1; padding: 40px; }
+        .indice-section { margin-bottom: 36px; }
+        .indice-title { font-size: 1.4rem; font-weight: bold; padding: 12px 0 16px; border-radius: 10px; margin-bottom: 16px;}
+        .verde { color: #26d26e; border-bottom: 2.5px solid #26d26e; }
+        .azul { color: #1e9be6; border-bottom: 2.5px solid #1e9be6; }
+        .amarelo { color: #FFD700; border-bottom: 2.5px solid #FFD700; }
+        .indice-cards { display: flex; flex-wrap: wrap; gap: 32px; justify-content: flex-start; }
+        .card-avaliacao {
+            background: #181818; border-radius: 1.5rem;
+            padding: 32px 24px 22px 24px; box-shadow: 0 2px 12px #0008;
+            text-align: center; min-width: 220px; max-width: 340px;
+            flex: 1 1 220px; margin: 0 16px 24px 0;
+            border: 2.5px solid #333; transition: border 0.2s;
+        }
+        .card-avaliacao.verde { border: 2.5px solid #26d26e; }
+        .card-avaliacao.azul { border: 2.5px solid #1e9be6; }
+        .card-avaliacao.amarelo { border: 2.5px solid #FFD700; }
+        .card-avaliacao h5 { font-size: 1rem; color: #bbb; margin-bottom: 10px;}
+        .valor-principal { font-size: 1.2rem; font-weight: bold; color: #fff; margin-bottom: 5px;}
+        .valor-sub { font-size: 1.10rem; color: #aaa; font-weight: 500; margin-bottom: 2px;}
+        @media (max-width: 900px) {
+            .indice-cards { flex-direction: column; gap: 20px; }
+            .card-avaliacao { max-width: 100%; min-width: 0; margin: 0 0 18px 0; }
+            .sidebar { min-width: 60px; max-width: 180px; padding: 8px;}
+            .main-content { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+{% include "sidebar.html" %}
+    <div class="main-content">
+        <h1 class="text-center mb-4">Consulta de Índices Econômicos</h1>
+        <div id="erro-indices" class="alert alert-danger" style="display:none;"></div>
+        <div class="indice-section">
+            <div class="indice-title verde">Indicadores de Mercado</div>
+            <div class="indice-cards" id="cards-indicadores"></div>
+        </div>
+        <div class="indice-section">
+            <div class="indice-title azul">Moedas</div>
+            <div class="indice-cards" id="cards-moedas"></div>
+        </div>
+        <div class="indice-section">
+            <div class="indice-title amarelo">Indicadores Econômicos IBGE</div>
+            <div class="indice-cards" id="cards-ibge"></div>
+        </div>
+    </div>
+<script>
+const categorias = {
+    "indicadores": ["IPCA", "SELIC", "CDI", "IGPM", "INCC"],
+    "moedas": ["Dólar", "Euro", "Libra"],
+    "ibge": ["Custo Construção Civil", "Desemprego"]
+};
+const coresCategoria = {
+    "indicadores": "verde",
+    "moedas": "azul",
+    "ibge": "amarelo"
+};
+const subtitulos = {
+    "IPCA": "Inflação",
+    "SELIC": "Meta Copom",
+    "CDI": "Taxa interbancária",
+    "IGPM": "Inflação",
+    "INCC": "Construção civil",
+    "Dólar": "Cotação comercial",
+    "Euro": "Cotação comercial",
+    "Libra": "Cotação comercial",
+    "Custo Construção Civil": "R$/m² Brasil",
+    "Desemprego": "Desempregados"
+};
+
+async function carregarIndices() {
+    try {
+        const res = await fetch("/api/indices");
+        const data = await res.json();
+        if (data.erro) throw new Error(data.erro);
+
+        // Separe em três categorias
+        let porCategoria = { "indicadores": [], "moedas": [], "ibge": [] };
+        data.indices.forEach(idx => {
+            let nome = idx.nome.trim();
+            for (let cat in categorias) {
+                if (categorias[cat].includes(nome)) {
+                    porCategoria[cat].push(idx);
+                    break;
+                }
+            }
+        });
+        // Renderiza para cada categoria nos IDs corretos
+        for (let cat in porCategoria) {
+            let html = '';
+            porCategoria[cat].forEach(idx => {
+                let unidade = idx.unidade || '';
+                let valorFormatado = (typeof idx.valor_atual === "number")
+                    ? idx.valor_atual.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+                    : idx.valor_atual;
+                let nome = idx.nome.trim();
+                let prefix = '', suffix = '';
+                if (unidade.startsWith('R$')) { prefix = 'R$ '; }
+                else if (unidade == "pts") { suffix = " pts"; }
+                else { suffix = unidade ? ` ${unidade}` : ''; }
+                html += `<div class="card-avaliacao ${coresCategoria[cat]}">
+                    <h5>${idx.nome}</h5>
+                    <div class="valor-principal">${prefix}${valorFormatado}${suffix}</div>
+                    <div class="valor-sub">${subtitulos[nome] || ""}</div>
+                </div>`;
+            });
+            let elem = document.getElementById("cards-" + cat);
+            if (elem) elem.innerHTML = html;
+        }
+    } catch (err) {
+        document.getElementById("erro-indices").style.display = "block";
+        document.getElementById("erro-indices").innerText = "Erro ao carregar índices: " + err.message;
+    }
+}
+carregarIndices();
+</script>
+</body>
+</html>

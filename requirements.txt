@@ -5,3 +5,10 @@ joblib
 matplotlib
 seaborn
 flask
+requests
+beautifulsoup4
+selenium
+unidecode
+datetime
+astral
+lxml

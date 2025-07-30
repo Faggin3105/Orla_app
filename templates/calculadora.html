@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculadora HP12C Completa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:700,400" rel="stylesheet">
+  <style>
+    body { background: #202022; font-family: 'Roboto Mono', monospace; margin: 0; display: flex; min-height: 100vh;}
+    .sidebar { width: 220px; background: #111; padding: 24px 18px 0 18px; min-height: 100vh; box-sizing: border-box; position: fixed; left: 0; top: 0; bottom: 0; z-index: 2;}
+    .sidebar img { max-width: 80%; display: block; margin: 0 auto 32px auto;}
+    .sidebar a { display: block; color: #fff; text-decoration: none; margin: 12px 0; font-size: 1.06rem; transition: color 0.18s;}
+    .sidebar a.active, .sidebar a:hover { color: #ca5d09; font-weight: 600;}
+    .main-content { margin-left: 220px; flex: 1; display: flex; flex-direction: column; align-items: center; min-height: 100vh;}
+    .hp12c-title { color: #ca5d09; font-size: 2rem; font-weight: 900; margin: 34px 0 10px 0; width: 100%; text-align: left; max-width: 530px; font-family: 'Inter', Arial, sans-serif;}
+    .hp12c-search-box { width: 100%; max-width: 540px; margin-bottom: 22px; margin-top: 7px; }
+    .hp12c-search-bar { width: 55%; font-size: 1.09rem; padding: 8px 15px; border-radius: 0.6rem; border: 2px solid #ca5d09; background: #181818; color: #FFD600; margin-right: 7px; outline: none;}
+    .hp12c-search-btn, .hp12c-clear-btn { font-size: 1.05rem; background: #ca5d09; color: #181818; border: none; border-radius: 7px; padding: 8px 15px; font-weight: 700; margin-left: 2px; transition: background 0.12s;}
+    .hp12c-search-btn:hover, .hp12c-clear-btn:hover { background: #FFD600; color: #232323; }
+    .hp12c-response { background: #ded5c0; border: 2px solid #ca5d09; border-radius: 8px; padding: 13px; margin-top: 11px; font-size: 1.11rem; color: #232323; min-height: 28px; font-family: Arial, sans-serif; white-space: pre-line;}
+    .calc-wrap { background: #f3f1e8; border-radius: 18px; border: 4px solid #b6ae90; box-shadow: 0 8px 40px #000a; padding: 28px 30px 24px 30px; margin: 18px 0 28px 0; display: flex; flex-direction: column; align-items: center; width: 440px;}
+    .calc-display { width: 98%; height: 54px; background: #e7deb6; border-radius: 8px; border: 2.2px solid #ad9952; font-family: 'Roboto Mono', monospace; font-size: 2.1rem; color: #222; text-align: right; margin: 0 auto 19px auto; padding: 7px 20px; box-shadow: 0 2px 8px #0002 inset; outline: none; display: block; letter-spacing: 1.7px; font-variant-numeric: tabular-nums; font-weight: 700; text-shadow: 0 1px 1.5px #fff7;}
+    .calc-keys { display: grid; grid-template-columns: repeat(6, 56px); grid-template-rows: repeat(8, 44px); grid-gap: 8px; justify-content: center; align-items: center; margin: 0 auto; position: relative; margin-bottom: 10px;}
+    .calc-btn { background: #232323; border-radius: 8px; border: 2px solid #45423f; color: #fff; font-family: 'Roboto Mono', 'Menlo', 'Consolas', monospace; font-size: 1.1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 0; box-sizing: border-box; cursor: pointer; user-select: none; position: relative; overflow: hidden; height: 44px; width: 56px; outline: none; transition: box-shadow 0.11s; font-weight: 700;}
+    .calc-btn.func { color: #FFD600;}
+    .calc-btn.op { color: #36b7e9; }
+    .calc-btn.irr, .calc-btn.cfj, .calc-btn.npv, .calc-btn.nj { color: #00c5ff; font-weight: 700;}
+    .calc-btn.enter { background: #ffe187; color: #7c6019; font-weight: 900;}
+    .calc-btn.clx, .calc-btn.chs { color: #fc9403;}
+    .calc-btn:active { filter: brightness(1.17);}
+    .calc-btn.empty { background: transparent; border: none; cursor: default; pointer-events: none;}
+    .calc-btn sup { font-size: 0.7em;}
+    .tooltip { display: none; position: absolute; top: -38px; left: 50%; transform: translateX(-50%); background: #2d2d23; color: #FFD600; padding: 4px 12px; font-size: 0.96rem; border-radius: 8px; white-space: nowrap; z-index: 10; pointer-events: none;}
+    .calc-btn:hover .tooltip { display: block;}
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0;}
+      .calc-wrap { width: 99vw; padding: 1vw; }
+      .calc-keys { grid-template-columns: repeat(4, 1fr); grid-gap: 6px;}
+      .calc-btn { width: 100%; height: 52px; font-size: 1.18rem;}
+      .calc-display { font-size: 1.4rem; padding: 4px 8px; }
+      .hp12c-title { font-size: 1.3rem;}
+      .hp12c-search-box { max-width: 99vw;}
+    }
+    @media (max-width:480px) {
+      .calc-keys { grid-template-columns: repeat(3, 1fr);}
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <img src="{{ url_for('static', filename='LOGO TRIPLE A BRANCA_Prancheta 1.png') }}" alt="Logo Orla" class="img-fluid mb-4" style="max-width: 50%;">
+        <a href="/">Home</a>
+        <a href="/noticias">Notícias do Mercado</a>
+        <a href="/indices">Consulta de Índices</a>
+        <a href="/simulador">Simulador de Financiamento</a>
+        <a href="/calculadora">Calculadora Financeira</a>
+        <a href="/avaliacao">Avaliação de Imóveis</a>
+        <a href="/contratos">Criação de Contratos</a>
+        <a href="/posicao-solar">Posição Solar</a>
+        <a href="/perfil-cliente">Análise de Perfil de Cliente</a>
+        <a href="/dicionario">Dicionário do Corretor</a>
+        <a href="/biblioteca">Biblioteca</a>
+        <a href="/universidade">Universidade</a>
+        <a href="/agenda">Agenda</a>
+  </div>
+  <div class="main-content">
+    <div class="hp12c-title">Calculadora HP12C Completa</div>
+    <div class="hp12c-search-box">
+      <form id="hp12c-form-busca" onsubmit="return false;" autocomplete="off">
+        <label for="hp12c-search-input" style="color:#FFD600;font-size:1.18rem;">O que você quer calcular hoje?</label><br>
+        <input id="hp12c-search-input" class="hp12c-search-bar" placeholder="Ex: Como calcular IRR, NPV, etc?">
+        <button id="hp12c-search-btn" class="hp12c-search-btn">Perguntar</button>
+        <button type="button" id="hp12c-clear-btn" class="hp12c-clear-btn">Limpar</button>
+      </form>
+      <div id="hp12c-response" class="hp12c-response"></div>
+    </div>
+    <div class="calc-wrap">
+      <input id="calc-display" class="calc-display" readonly value="0">
+      <div class="calc-keys">
+        <button class="calc-btn func" data-key="n">n<div class="tooltip">Períodos</div></button>
+        <button class="calc-btn func" data-key="i">i<div class="tooltip">Taxa de Juros</div></button>
+        <button class="calc-btn func" data-key="PV">PV<div class="tooltip">Valor Presente</div></button>
+        <button class="calc-btn func" data-key="PMT">PMT<div class="tooltip">Pagamento</div></button>
+        <button class="calc-btn func" data-key="FV">FV<div class="tooltip">Valor Futuro</div></button>
+        <button class="calc-btn cfj" data-key="CFj">CFj<div class="tooltip">Fluxo de caixa</div></button>
+        <button class="calc-btn nj" data-key="Nj">Nj<div class="tooltip">N vezes</div></button>
+        <button class="calc-btn irr" data-key="IRR">IRR<div class="tooltip">Taxa Interna Retorno</div></button>
+        <button class="calc-btn npv" data-key="NPV">NPV<div class="tooltip">Valor Presente Líquido</div></button>
+        <button class="calc-btn" data-key="7">7</button>
+        <button class="calc-btn" data-key="8">8</button>
+        <button class="calc-btn" data-key="9">9</button>
+        <button class="calc-btn op" data-key="÷">÷</button>
+        <button class="calc-btn clx" data-key="CLx">CLx<div class="tooltip">Limpa X</div></button>
+        <button class="calc-btn" data-key="4">4</button>
+        <button class="calc-btn" data-key="5">5</button>
+        <button class="calc-btn" data-key="6">6</button>
+        <button class="calc-btn op" data-key="×">×</button>
+        <button class="calc-btn chs" data-key="CHS">CHS<div class="tooltip">Troca sinal</div></button>
+        <button class="calc-btn" data-key="1">1</button>
+        <button class="calc-btn" data-key="2">2</button>
+        <button class="calc-btn" data-key="3">3</button>
+        <button class="calc-btn op" data-key="-">-</button>
+        <button class="calc-btn func" data-key="EEX">EEX<div class="tooltip">Expoente</div></button>
+        <button class="calc-btn" data-key="0">0</button>
+        <button class="calc-btn" data-key=".">.</button>
+        <button class="calc-btn op" data-key="+">+</button>
+        <button class="calc-btn enter" data-key="ENTER">ENTER<div class="tooltip">Entra valor</div></button>
+        <button class="calc-btn func" data-key="RCL">RCL<div class="tooltip">Recupera mem.</div></button>
+        <button class="calc-btn func" data-key="STO">STO<div class="tooltip">Armazena mem.</div></button>
+        <button class="calc-btn func" data-key="g">g<div class="tooltip">Função azul</div></button>
+        <button class="calc-btn func" data-key="f">f<div class="tooltip">Função laranja</div></button>
+        <button class="calc-btn func" data-key="1/x">1/x<div class="tooltip">Inverso</div></button>
+        <button class="calc-btn func" data-key="Y^x">Y<sup>x</sup><div class="tooltip">Potência</div></button>
+        <button class="calc-btn func" data-key="X<>Y">X<>Y<div class="tooltip">Troca XY</div></button>
+        <button class="calc-btn func" data-key="%">%</button>
+        <button class="calc-btn func" data-key="Δ%">&Delta;%<div class="tooltip">Variação %</div></button>
+        <button class="calc-btn func" data-key="√x">&radic;x<div class="tooltip">Raiz</div></button>
+        <button class="calc-btn func" data-key="ON">ON<div class="tooltip">Liga/Desliga</div></button>
+        <button class="calc-btn func" data-key="Σ+">Σ+<div class="tooltip">Soma estatística</div></button>
+        <button class="calc-btn func" data-key="Σ-">Σ-<div class="tooltip">Subtrai estatística</div></button>
+        <button class="calc-btn func" data-key="R/S">R/S<div class="tooltip">Executa/Para</div></button>
+        <button class="calc-btn func" data-key="EEX">EEX<div class="tooltip">Expoente</div></button>
+        <button class="calc-btn func" data-key="CLr">CLr<div class="tooltip">Limpa registros</div></button>
+        <button class="calc-btn func" data-key="BEG">BEG<div class="tooltip">Início/Fim do período</div></button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // --- Busca OpenAI integrada ---
+    const btn = document.getElementById('hp12c-search-btn');
+    const clearBtn = document.getElementById('hp12c-clear-btn');
+    const input = document.getElementById('hp12c-search-input');
+    const resp = document.getElementById('hp12c-response');
+    btn.onclick = async function(){
+      const question = input.value.trim();
+      if (!question) return;
+      resp.innerHTML = 'Pensando...';
+      try {
+        const res = await fetch("/openai-assistente", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({pergunta: question})
+        });
+        const data = await res.json();
+        resp.innerHTML = data.resposta || 'Erro na resposta do servidor';
+      } catch (e) {
+        resp.innerHTML = "Erro ao conectar com o backend";
+      }
+    }
+    clearBtn.onclick = function() {
+      input.value = '';
+      resp.innerHTML = '';
+      input.focus();
+    }
+
+    // --- Calculadora HP12C fiel + CFj/Nj/IRR/NPV ---
+    const display = document.getElementById('calc-display');
+    let stack = [0,0,0,0];
+    let current = '';
+    let memory = Array(20).fill(0);
+    let modeBeg = false;
+    let cashflows = []; // {valor: Number, nj: Number}
+    let awaitingNj = false;
+
+    // --- Variáveis financeiras individuais ---
+    let valN = null, valI = null, valPV = null, valPMT = null, valFV = null;
+
+    function updateDisplay(msg) {
+      if (msg) { display.value = msg; return; }
+      display.value = current !== '' ? current : stack[0];
+    }
+    function pushStack(val) { stack = [val, stack[0], stack[1], stack[2]]; }
+    function popStack() { let x = stack[0]; stack = [stack[1], stack[2], stack[3], 0]; return x; }
+    function swapXY() { [stack[0], stack[1]] = [stack[1], stack[0]]; }
+    function clearStack() { stack = [0,0,0,0]; }
+    function showError(msg) { updateDisplay("Erro: " + msg); setTimeout(updateDisplay, 2000, ""); }
+    function clearFinancialMemory() { valN = valI = valPV = valPMT = valFV = null; }
+
+    // -- Nova solveFinancial fiel à HP12C --
+    function solveFinancial(key) {
+      // Salva valor digitado na variável correta
+      let val = current !== '' ? parseFloat(current) : stack[0];
+      if (isNaN(val)) return showError("Digite um valor válido");
+
+      // Salva no registro apropriado
+      if (key === 'n')   valN = val;
+      if (key === 'i')   valI = val;
+      if (key === 'PV')  valPV = val;
+      if (key === 'PMT') valPMT = val;
+      if (key === 'FV')  valFV = val;
+      current = '';
+
+      // Conta quantos campos foram preenchidos
+      let filled = [valN, valI, valPV, valPMT, valFV].filter(v=>v!==null).length;
+      if (filled < 4) { updateDisplay(); return; } // Não tenta calcular ainda!
+
+      let n = valN, i = valI, pv = valPV, pmt = valPMT, fv = valFV, beg = modeBeg ? 1 : 0;
+      let missing = null, result = null;
+
+      // Descobre qual campo calcular (está nulo)
+      if (valN  === null) missing = 'n';
+      if (valI  === null) missing = 'i';
+      if (valPV === null) missing = 'PV';
+      if (valPMT=== null) missing = 'PMT';
+      if (valFV === null) missing = 'FV';
+
+      try {
+        if (missing === 'i') {
+          // Cálculo iterativo de i
+          let guess = 0.1, iter=0, test=0, res=0;
+          while(iter++<100) {
+            if(guess===-1) break;
+            test = pv*Math.pow(1+guess,n) + pmt*((1+guess*beg)*(Math.pow(1+guess,n)-1)/guess) + fv;
+            if(Math.abs(test)<1e-7) break;
+            res = pv*n*Math.pow(1+guess,n-1) + pmt*((1+guess*beg)*n*Math.pow(1+guess,n-1)/guess-(1+guess*beg)*(Math.pow(1+guess,n)-1)/Math.pow(guess,2));
+            guess -= test/(res||1);
+          }
+          result = guess*100;
+          valI = result;
+          updateDisplay(result.toFixed(8));
+        }
+        else if (missing === 'n') {
+          i = i/100;
+          result = Math.log((pmt*(1+i*beg)-fv*i)/(pmt*(1+i*beg)+pv*i))/Math.log(1+i);
+          valN = result;
+          updateDisplay(result.toFixed(8));
+        }
+        else if (missing === 'PV') {
+          i = i/100;
+          result = (-pmt*(1+ i*beg)*(Math.pow(1+i,n)-1)/(i*Math.pow(1+i,n))) - (fv/Math.pow(1+i,n));
+          valPV = result;
+          updateDisplay(result.toFixed(8));
+        }
+        else if (missing === 'PMT') {
+          i = i/100;
+          result = (-pv*i*Math.pow(1+i,n)-fv*i)/( (1+i*beg)*(Math.pow(1+i,n)-1) );
+          valPMT = result;
+          updateDisplay(result.toFixed(8));
+        }
+        else if (missing === 'FV') {
+          i = i/100;
+          result = -pv*Math.pow(1+i,n) - pmt*(1+i*beg)*(Math.pow(1+i,n)-1)/i;
+          valFV = result;
+          updateDisplay(result.toFixed(8));
+        }
+        else {
+          updateDisplay("Todos preenchidos!");
+        }
+        // Atualiza stack também
+        stack[0] = result;
+      } catch(e) {
+        showError("Cálculo inválido");
+      }
+    }
+
+    function updateBegEndBtn() {
+      let begBtn = document.querySelector('.calc-btn[data-key="BEG"]');
+      if(!begBtn) return;
+      begBtn.style.background = modeBeg ? "#ffbb00" : "#232323";
+      begBtn.textContent = modeBeg ? "BEG*" : "BEG";
+    }
+
+    // --- Funções Avançadas: CFj, Nj, IRR, NPV ---
+    function clearCashflows() {
+      cashflows = [];
+      awaitingNj = false;
+    }
+    function handleCFj() {
+      let val = current !== '' ? parseFloat(current) : stack[0];
+      if (isNaN(val)) return showError("Digite o valor do fluxo");
+      cashflows.push({valor: val, nj: 1});
+      awaitingNj = true;
+      updateDisplay("CFj " + val);
+      current = '';
+      setTimeout(updateDisplay, 1300);
+    }
+    function handleNj() {
+      if (!awaitingNj || !cashflows.length) return showError("Digite um CFj primeiro");
+      let njval = current !== '' ? parseInt(current) : 1;
+      if (isNaN(njval) || njval < 1) return showError("Nj inválido");
+      cashflows[cashflows.length-1].nj = njval;
+      awaitingNj = false;
+      updateDisplay("Nj " + njval);
+      current = '';
+      setTimeout(updateDisplay, 1300);
+    }
+    function handleNPV() {
+      if (!cashflows.length) return showError("Entre com fluxos CFj antes");
+      let taxa = prompt("Taxa (%) ao período?");
+      if (taxa===null) return;
+      taxa = parseFloat(taxa);
+      if(isNaN(taxa)) return showError("Taxa inválida");
+      taxa /= 100;
+      let npv = 0, idx = 0;
+      for(let i=0;i<cashflows.length;i++) {
+        for(let j=0;j<cashflows[i].nj;j++,idx++)
+          npv += cashflows[i].valor / Math.pow(1+taxa, idx);
+      }
+      updateDisplay("NPV = " + npv.toFixed(8));
+      clearCashflows();
+      setTimeout(updateDisplay, 2500, "");
+    }
+    function handleIRR() {
+      if (!cashflows.length) return showError("Entre com fluxos CFj antes");
+      let fluxo = [];
+      cashflows.forEach(cf=>{
+        for(let j=0;j<cf.nj;j++) fluxo.push(cf.valor);
+      });
+      // Algoritmo Newton-Raphson
+      let guess = 0.1, iter=0, res=0, deriv=0, eps=1e-8, maxiter=200;
+      for(;iter<maxiter;iter++) {
+        res = 0; deriv = 0;
+        for(let k=0;k<fluxo.length;k++) {
+          res += fluxo[k] / Math.pow(1+guess, k);
+          if (k>0) deriv -= k*fluxo[k]/Math.pow(1+guess, k+1);
+        }
+        if(Math.abs(res)<eps) break;
+        guess -= res/(deriv||1);
+        if(guess<-0.99) { guess=0.01; }
+      }
+      if(isFinite(guess)) {
+        updateDisplay("IRR = "+ (guess*100).toFixed(8)+"%");
+      } else {
+        showError("IRR não encontrado");
+      }
+      clearCashflows();
+      setTimeout(updateDisplay, 2500, "");
+    }
+
+    document.querySelectorAll('.calc-btn').forEach(btn => {
+      btn.onclick = function(){
+        const k = btn.dataset.key;
+        if(!k) return;
+
+        // Novos botões avançados
+        if (k==='CFj') return handleCFj();
+        if (k==='Nj')  return handleNj();
+        if (k==='NPV') return handleNPV();
+        if (k==='IRR') return handleIRR();
+
+        if(!isNaN(k) || k=='.') {
+          if(current.length<14) current += k;
+          updateDisplay();
+        }
+        else if(k==='ENTER') {
+          if(current!=='') pushStack(parseFloat(current));
+          current = '';
+          updateDisplay();
+        }
+        else if(['+','-','×','÷'].includes(k)) {
+          if(current!=='') { pushStack(parseFloat(current)); current=''; }
+          let y = popStack(), x = popStack(), r=0;
+          if     (k==='+') r = x+y;
+          else if(k==='-') r = x-y;
+          else if(k==='×') r = x*y;
+          else if(k==='÷') {
+            if (y===0) return showError("Divisão por zero");
+            r = x/y;
+          }
+          pushStack(r);
+          updateDisplay();
+        }
+        else if(k==='CHS') {
+          if(current!=='') { current = (-parseFloat(current)).toString(); }
+          else { stack[0]*=-1; }
+          updateDisplay();
+        }
+        else if(k==='CLx') {
+          current = '';
+          stack[0] = 0;
+          updateDisplay();
+        }
+        else if(k==='CLr') {
+          clearStack();
+          current = '';
+          updateDisplay();
+          clearCashflows();
+          clearFinancialMemory();
+        }
+        else if(k==='X<>Y') {
+          swapXY(); updateDisplay();
+        }
+        else if(k==='1/x') {
+          let v = current!=='' ? parseFloat(current) : stack[0];
+          if(v!==0) {
+            v = 1/v;
+            current!=='' ? current=v.toString() : stack[0]=v;
+            updateDisplay();
+          } else showError("Divisão por zero");
+        }
+        else if(k==='√x') {
+          let v = current!=='' ? parseFloat(current) : stack[0];
+          if(v>=0) {
+            v = Math.sqrt(v);
+            current!=='' ? current=v.toString() : stack[0]=v;
+            updateDisplay();
+          } else showError("Raiz de número negativo");
+        }
+        else if(k==='%') {
+          let y = popStack(), x = popStack();
+          let r = y * x / 100;
+          pushStack(r); updateDisplay();
+        }
+        else if(k==='Δ%') {
+          let y = popStack(), x = popStack();
+          let r = ((y-x)/x)*100;
+          pushStack(r); updateDisplay();
+        }
+        else if(k==='STO') {
+          let reg = prompt("Salvar em qual registro? (0-19)");
+          if(reg!==null && !isNaN(reg) && reg>=0 && reg<20) memory[reg]=stack[0];
+        }
+        else if(k==='RCL') {
+          let reg = prompt("Ler qual registro? (0-19)");
+          if(reg!==null && !isNaN(reg) && reg>=0 && reg<20) { stack[0]=memory[reg]; updateDisplay();}
+        }
+        else if(k==='EEX') {
+          let v = current!=='' ? parseFloat(current) : stack[0];
+          let exp = prompt("Expoente:");
+          if(exp!==null && !isNaN(exp)) {
+            v = v * Math.pow(10,parseInt(exp));
+            current!=='' ? current=v.toString() : stack[0]=v;
+            updateDisplay();
+          }
+        }
+        else if(k==='BEG') {
+          modeBeg = !modeBeg;
+          updateBegEndBtn();
+          updateDisplay(modeBeg ? "Modo BEG (início)" : "Modo END (fim)");
+          setTimeout(()=>updateDisplay(),1300);
+        }
+        else if(['n','i','PV','PMT','FV'].includes(k)) {
+          solveFinancial(k);
+        }
+        else if(k==='ON') {
+          clearStack(); current=''; memory=Array(20).fill(0); updateDisplay(); clearCashflows(); clearFinancialMemory();
+        }
+        else if(['Σ+','Σ-','R/S'].includes(k)) {
+          updateDisplay('Estatística');
+          setTimeout(updateDisplay,1200);
+        }
+        else {
+          updateDisplay('Função extra');
+          setTimeout(updateDisplay,1200);
+        }
+      }
+    });
+    document.querySelectorAll('.calc-btn').forEach(btn=>{
+      btn.addEventListener('touchstart',function(){
+        const tip = btn.querySelector('.tooltip');
+        if(tip) { tip.style.display='block'; setTimeout(()=>tip.style.display='none', 1500);}
+      });
+    });
+    updateBegEndBtn();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
