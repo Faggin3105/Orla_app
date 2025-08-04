@@ -43,7 +43,7 @@ def load_user(user_id):
         return User(row[0], row[1])
     return None
 
-openai.api_key = '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'
+openai.api_key = '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'
 
 padroes_bairros = {
     "FAZENDA VAU DAS POMBAS": "PORTAL DO SOL GREEN",
@@ -1419,47 +1419,5 @@ def calcular_averbacao(estado, custo_obra, area):
         if custo_obra >= faixa_min and custo_obra <= faixa_max:
             return valor
     return 'Consultar cartório'
-
-@app.route('/perfil_cliente')
-def perfil_cliente():
-    return render_template('perfil_cliente.html')
-
-@app.route('/analisar_perfil', methods=['POST'])
-def analisar_perfil():
-    try:
-        dados = request.json
-
-        # Definindo o prompt ANTES de chamar a API!
-        prompt = (
-             "Essas são as informações iniciais sobre o cliente. "
-             "Analise e me diga qual é o perfil comportamental dele para abordagem de venda, e classifique-o conforme o eneatipo (1 ao 9) "
-             "indique sugestões e estratégias de comunicação, frases recomendadas, o que evitar, resumindo em até 490 caracteres. "
-             "e possíveis objeções que ele pode apresentar com eventuais argumentações.\n\n"
-             f"Dados do cliente:\n{dados}\n\n"
-             "Responda em Markdown, usando tópicos, negrito, listas, divisões e quebras de linha. Destaque dicas, frases recomendadas e o que evitar."
-        )
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Você é um assistente de vendas imobiliárias, especialista em perfis de clientes e estratégias de abordagem."
-                    )
-                },
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=500,
-            temperature=0.8
-        )
-
-        conteudo = response.choices[0].message.content
-        return jsonify({"resultado": conteudo})
-
-    except Exception as e:
-        print("Erro na análise de perfil:", e)
-        return jsonify({"erro": "Erro ao analisar perfil."}), 500
-
 if __name__ == '__main__':
     app.run(debug=True)
